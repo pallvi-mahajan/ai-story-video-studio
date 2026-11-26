@@ -134,14 +134,22 @@ BUDDY = ("Buzzy", "a tiny round cute honeybee with big shiny eyes and a black gr
 STOP = {"A", "An", "The", "One", "Once", "When", "How", "Why", "My", "Our", "Story", "Learn", "Learns", "Today",
         "She", "He", "They", "Girl", "Boy", "Little", "Kid", "Child"}
 AGE_RE = re.compile(r"\b(?:at\s+)?(?:the\s+)?age\s+(?:of\s+)?(\d{1,2})\b|\b(\d{1,2})[- ]?(?:years?|yrs?)[- ]?old\b", re.I)
-SKILL_RE = re.compile(r"\blearn(?:s|ed|t|ing)?\s+(?:how\s+)?(?:to\s+)?([a-z][a-z' ]*?)\s*"
+SKILL_RE = re.compile(r"\b(?:(?:learn|lear|lern|leran|larn|leanr)(?:s|ed|t|ing)?\s+(?:how\s+)?(?:to\s+)?|"
+                      r"(?:wants?|wanted|tries|tried|try|trying)\s+to\s+|how\s+to\s+)([a-z][a-z' ]*?)\s*"
                       r"(?:$|[.!?,]|\b(?:at|when|with|from|in|on|because|after|before|by|for)\b)")
+HELPERS = [
+    (r"mother|mom|mum|mummy|mama|ammi|maa", ("Mom", "a kind young mother with long dark hair tied back, warm brown eyes, wearing a soft green dress and an apron")),
+    (r"father|dad|daddy|papa|abbu", ("Dad", "a kind father with short black hair, a neat beard, warm brown eyes and a blue shirt")),
+    (r"grandma|grandmother|granny|nani|dadi", ("Grandma Rose", "a kind grandmother with grey hair in a bun, round glasses and a purple shawl")),
+    (r"grandpa|grandfather|nana|dada", ("Grandpa", "a kind grandfather with white hair, round glasses and a brown sweater")),
+    (r"teacher|coach|aunt|aunty|auntie|uncle", ("Teacher", "a friendly teacher with glasses, a warm smile and a yellow cardigan")),
+]
 HANDS_ON = re.compile(r"^(make|cook|bake|prepare|ride|swim|play|draw|paint|read|write|sing|dance|tie|grow|plant|build)\b")
 SKILL_PLACES = [
     (r"cook|rice|bak|cake|roti|bread|tea\b|soup|food|pancake|cookie|dal|curry|noodle|egg|sandwich|breakfast|lunch|dinner",
      "bright cozy kitchen with pots, pans and colourful spices"),
     (r"swim", "sunny swimming pool with sparkling blue water"),
-    (r"ride|cycl|bike|skate", "sunny park path with trees and flowers"),
+    (r"ride|cycl|bike|skate|kite|fly\b", "sunny park with green grass, trees and flowers"),
     (r"read|writ|spell|math|count|homework|study", "cozy room with a little desk and a bookshelf"),
     (r"draw|paint|colou?r", "bright art room with paints and paper"),
     (r"danc|sing|music|piano|guitar|violin|drum", "colourful music room with instruments"),
@@ -165,7 +173,9 @@ def write_story(theme: str, n_scenes: int = 6, characters: dict | None = None) -
     lesson = None if skill and HANDS_ON.match(skill) else next(
         (l for l in LESSONS if re.search(r"\b(?:%s)" % l[0], skill or low)), None if skill else LESSONS[6])
     names = [w for w in re.findall(r"\b[A-Z][a-z]{2,}\b", text) if w not in STOP]
-    lm = re.match(r"^([a-z]{3,})\s+(?:learn|learns|learned|learnt|wants|tries|is|goes|loves|finds|makes|gets|and)\b", text, re.I)
+    lm = re.match(r"^([a-z]{3,})\s+(?:lea?rn?\w*|lern\w*|wants|tries|is|goes|loves|finds|makes|gets|and)\b", text, re.I)
+    hw = re.search(r"\bwith\s+(?:her|his|my|their|the)\s+([a-z]+)", low)
+    helper = next((h for r, h in HELPERS if hw and re.search(r, hw.group(1))), None)
     if not names and lm and lm.group(1).capitalize() not in STOP:
         names = [lm.group(1).capitalize()]
     boy_name = bool(names) and names[0].lower() in BOY_NAMES
@@ -174,7 +184,7 @@ def write_story(theme: str, n_scenes: int = 6, characters: dict | None = None) -
     chars = list((characters or {}).items())
     H, hlook = chars[0] if chars else (names[0] if names else ("Arjun" if boy else "Mia"), aged(HERO["boy" if boy else "girl"]))
     rest = chars[1:]
-    A, alook = next((c for c in rest if re.search(r"grand|mom|dad|mother|father|teacher", c[0] + c[1], re.I)), ADULT)
+    A, alook = next((c for c in rest if re.search(r"grand|mom|dad|mother|father|teacher", c[0] + c[1], re.I)), helper or ADULT)
     others = [c for c in rest if c[0] != A]
     fname, flook0 = FRIEND["boy" if boy else "girl"]
     F, flook = others[0] if others else (fname, aged(flook0))
@@ -243,7 +253,8 @@ def _lesson_scenes(lesson, low, H, F, A, B, her):
     """A moral story (sharing, saying sorry, being brave...) built from one of the LESSONS."""
     pattern, title, place, obj, problem, ask, refuse, feel, advice, fix, moral = lesson
     m = re.search(r"\b(?:her|his|the|my|their)\s+([a-z]+)\b", low)
-    obj = m.group(1) if m and not re.search(r"\b(?:%s)" % pattern, m.group(1)) else obj
+    person = m and (any(re.search(r, m.group(1)) for r, _ in HELPERS) or m.group(1) in {"friend", "friends", "brother", "sister", "family", "baby"})
+    obj = m.group(1) if m and not person and not re.search(r"\b(?:%s)" % pattern, m.group(1)) else obj
     obj = "toys" if obj == "toy" else obj
     f = lambda s: s.replace("{obj}", obj).replace("{F}", F)
     all_scenes = [
