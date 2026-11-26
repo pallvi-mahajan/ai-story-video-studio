@@ -3,9 +3,9 @@ import subprocess
 
 import imageio_ffmpeg
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-from .animate import FPS
+from .animate import FPS, camera_clip
 from .voices import SR
 
 FADE = 0.5
@@ -63,11 +63,12 @@ def caption(img, speaker, text, big=None):
 
 
 def fit(frames, n):
-    """Stretch a clip to n frames by playing it forward then backward (no jump cuts)."""
-    if not frames:
-        return []
-    cycle = frames + frames[-2:0:-1] if len(frames) > 2 else frames
-    return [cycle[i % len(cycle)] for i in range(n)]
+    """Make a clip n frames long: play the AI motion once, then hold the last frame with a slow camera push-in
+    (playing it backwards made characters move in reverse)."""
+    if not frames or len(frames) >= n:
+        return frames[:n]
+    out = frames + camera_clip(frames[-1].convert("RGB"), (n - len(frames)) / FPS, 0)
+    return (out + out[-1:] * n)[:n]
 
 
 def build_video(story, clips, audios, size, out_path, log=print):
@@ -83,7 +84,8 @@ def build_video(story, clips, audios, size, out_path, log=print):
         tail = 2.5 if i == n_sc - 1 else 0.0
         dur = max(3.5, len(samples) / SR + 0.6) + lead + tail
         n = int(dur * FPS)
-        frames = [f.convert("RGB").resize((W, H), Image.LANCZOS) for f in fit(frames, n)]
+        frames = [f.convert("RGB").resize((W, H), Image.LANCZOS).filter(ImageFilter.UnsharpMask(radius=2, percent=60, threshold=2))
+                  for f in fit(frames, n)]
         log(f"Composing scene {i + 1}/{n_sc} ({dur:.1f}s)...")
         for k, fr in enumerate(frames):
             t = k / FPS

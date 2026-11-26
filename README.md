@@ -16,10 +16,14 @@ script) and get a finished video with characters, voices, subtitles and a moral.
 2. **Runtime -> Change runtime type -> T4 GPU -> Save**.
 3. Run the 4 cells. Cell 2 is where you type your theme/script and characters.
 
-Pipeline (`studio/`): built-in story writer or script parser -> SDXL-Lightning Pixar-style pictures (same seed, same
-character descriptions and an IP-Adapter reference portrait for consistent characters) -> LTX-Video image-to-video
-(AI motion; falls back to camera moves if it fails) -> Kokoro voices (a voice per character) -> subtitles, title,
-crossfades -> MP4.
+Pipeline (`studio/`): built-in story writer or script parser -> SDXL-Lightning + Pixar-style LoRA pictures (scene-first
+prompts so the scene is never cut off, same seed, same character descriptions, and an IP-Adapter reference portrait
+per main character for consistent faces) -> LTX-Video 0.9.5 image-to-video, 4-second clips (AI motion; falls back to
+LTX-Video 0.9, then to camera moves) -> Kokoro voices (a voice per character) -> subtitles, title, crossfades,
+sharpening -> MP4.
+
+Tuning (top of `studio/pictures.py`): `PIXAR_STRENGTH` (cartoon look, default 1.5) and `FACE_STRENGTH` (how closely
+each character keeps the same face, default 0.5).
 
 Test the pipeline without a GPU: `python -m studio.run "Mia learns how to share her toys" --dry-run`
 
@@ -28,5 +32,5 @@ Story writer, 3D characters built from descriptions, 3D worlds from scene text, 
 jump), voices, subtitles, music, step-by-step scene checking. Hosted with GitHub Pages from `docs/`.
 
 ## Licences
-SDXL (CreativeML Open RAIL++-M), SDXL-Lightning (OpenRAIL++), IP-Adapter (Apache-2.0), LTX-Video (LTXV Open Weights
+SDXL (CreativeML Open RAIL++-M), SDXL-Lightning (OpenRAIL++), Pixar-style LoRA slider by ntc-ai (MIT), IP-Adapter (Apache-2.0), LTX-Video (LTXV Open Weights
 licence: check it before commercial use), Kokoro-82M (Apache-2.0), Three.js (MIT).

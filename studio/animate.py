@@ -1,7 +1,8 @@
 """Turns each still picture into a moving clip.
 
 engines:
-  "ltx"    - LTX-Video image-to-video (open, no login). Real AI motion: characters move, hair, light, camera.
+  "ltx"    - LTX-Video 0.9.5 image-to-video (open, no login; falls back to LTX-Video 0.9). Real AI motion: characters move,
+             hair, light, camera. 4-second clips.
   "svd"    - Stable Video Diffusion XT (needs a free Hugging Face token with the model licence accepted).
   "camera" - no AI: smooth cinematic camera move on the picture (fast, always works).
 If an AI engine fails (memory, download...), that scene falls back to "camera" so the video is always finished.
@@ -35,13 +36,22 @@ def camera_clip(img, seconds=3.0, move=0, size=None):
 class LTX:
     def __init__(self):
         import torch
-        from diffusers import LTXImageToVideoPipeline
         from transformers import BitsAndBytesConfig, T5EncoderModel
 
-        repo = "Lightricks/LTX-Video"
-        te = T5EncoderModel.from_pretrained(repo, subfolder="text_encoder", torch_dtype=torch.float16,
-                                            quantization_config=BitsAndBytesConfig(load_in_8bit=True))
-        self.pipe = LTXImageToVideoPipeline.from_pretrained(repo, text_encoder=te, torch_dtype=torch.float16)
+        def load(repo, pipeline_cls):
+            te = T5EncoderModel.from_pretrained(repo, subfolder="text_encoder", torch_dtype=torch.float16,
+                                                quantization_config=BitsAndBytesConfig(load_in_8bit=True))
+            return pipeline_cls.from_pretrained(repo, text_encoder=te, torch_dtype=torch.float16)
+
+        try:
+            from diffusers import LTXConditionPipeline
+
+            self.pipe, self.new = load("Lightricks/LTX-Video-0.9.5", LTXConditionPipeline), True
+        except Exception as e:
+            print("LTX-Video 0.9.5 not available, using LTX-Video 0.9:", e)
+            from diffusers import LTXImageToVideoPipeline
+
+            self.pipe, self.new = load("Lightricks/LTX-Video", LTXImageToVideoPipeline), False
         self.pipe.transformer.to("cuda")
         self.pipe.vae.to("cuda")
         self.pipe.vae.enable_tiling()
@@ -49,12 +59,15 @@ class LTX:
 
     def clip(self, img, prompt, seed):
         w, h = (768, 448) if img.width >= img.height else (448, 768)
-        out = self.pipe(image=img.resize((w, h)), prompt=prompt + ", smooth natural motion, 3D animated film",
-                        negative_prompt="worst quality, blurry, jittery, distorted, deformed face",
-                        width=w, height=h, num_frames=65, num_inference_steps=30, guidance_scale=3.0,
-                        decode_timestep=0.05, decode_noise_scale=0.025,
-                        generator=self.torch.Generator("cuda").manual_seed(seed)).frames[0]
-        return out
+        img = img.resize((w, h), Image.LANCZOS)
+        args = dict(prompt=prompt, negative_prompt="worst quality, blurry, jittery, distorted, deformed face, morphing, flicker",
+                    width=w, height=h, num_frames=97, num_inference_steps=30, guidance_scale=3.0,
+                    decode_timestep=0.05, decode_noise_scale=0.025, generator=self.torch.Generator("cuda").manual_seed(seed))
+        if self.new:
+            from diffusers.pipelines.ltx.pipeline_ltx_condition import LTXVideoCondition
+
+            return self.pipe(conditions=[LTXVideoCondition(image=img, frame_index=0)], **args).frames[0]
+        return self.pipe(image=img, **args).frames[0]
 
     def close(self):
         del self.pipe
@@ -102,7 +115,7 @@ def animate_all(pictures, prompts, engine="ltx", seed=7, log=print):
             except Exception as e:
                 log(f"Scene {i + 1}: AI animation failed ({e}); using a camera move.")
                 model.torch.cuda.empty_cache()
-        clips.append(camera_clip(img, 3.0, i))
+        clips.append(camera_clip(img, 4.0, i))
     if model:
         model.close()
     return clips
