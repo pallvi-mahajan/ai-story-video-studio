@@ -23,8 +23,15 @@ Needs a normal internet connection (home Wi-Fi / mobile data). Office networks t
 !nvidia-smi --query-gpu=name,memory.total --format=csv
 !git clone -q https://github.com/pallvi-mahajan/ai-story-video-studio.git /content/studio_repo 2>/dev/null || (cd /content/studio_repo && git pull -q)
 %cd /content/studio_repo
-!pip install -q -r requirements-colab.txt
-print("Setup done")
+# --ignore-requires-python: the Kokoro voice packages are labelled "Python < 3.13" but work on Colab's newer Python
+!pip install -q --ignore-requires-python -r requirements-colab.txt
+import importlib, sys
+missing = [m for m in ("diffusers", "transformers", "peft", "bitsandbytes", "kokoro", "misaki", "imageio_ffmpeg", "soundfile")
+           if importlib.util.find_spec(m) is None]
+if missing:
+    raise SystemExit(f"Setup failed, these packages did not install: {missing}. Python {sys.version.split()[0]}. "
+                     "Copy the red pip errors above and send them.")
+print(f"Setup done (Python {sys.version.split()[0]})")
 """),
     code('''
 #@title 2. Your story -> make the video
