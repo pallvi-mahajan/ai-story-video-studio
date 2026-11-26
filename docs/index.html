@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Character Video Maker - free, in your browser</title>
+<meta name="description" content="Make talking character videos for free: cartoon characters or your own photo, AI voice, mouth movement, music. Runs in your browser." />
+<link rel="stylesheet" href="style.css?v=12" />
+</head>
+<body>
+<header>
+  <h1>Character Video Maker</h1>
+  <span class="badge">free &middot; no login &middot; no credits &middot; runs in your browser</span>
+  <nav class="tabs">
+    <button type="button" id="tab_story" class="tab active">Story reel (AI pictures)</button>
+    <button type="button" id="tab_single" class="tab">Single character</button>
+  </nav>
+</header>
+
+<main>
+  <section class="card form" id="story_section">
+    <label>What is your story about? Type an idea, or paste a full script
+      <textarea id="st_script" rows="6" placeholder="e.g. Mia learns to share her toys with her little brother at the park&#10;&#10;...or paste a full script with scenes (Visual prompt / Narration / Dialogue / Sound)"></textarea>
+    </label>
+    <label>Your characters (optional, the same look is kept in every scene)
+      <textarea id="st_chars" rows="3" placeholder="Name: how they look&#10;e.g. Mia: a 6-year-old girl with long curly dark-brown hair, big brown eyes, teal dress"></textarea>
+    </label>
+    <div class="chips" id="st_presets"></div>
+    <p class="hint">No characters? The AI creates them from your story.</p>
+    <div class="row">
+      <label>Style <select id="st_style"></select></label>
+      <label>Format <select id="st_format">
+        <option value="9:16">9:16 (Reels / Shorts)</option>
+        <option value="16:9">16:9 (YouTube)</option>
+        <option value="1:1">1:1 (Square)</option>
+      </select></label>
+      <label>Scenes <input id="st_count" type="number" min="2" max="15" value="6" /></label>
+    </div>
+    <label class="check"><input id="st_step" type="checkbox" /> Check each scene before making the next one</label>
+    <button type="button" id="st_generate" class="big">Generate video</button>
+    <p class="hint">One click: writes the story, builds the 3D characters and worlds, animates them (talking, blinking, walking,
+      waving...), adds voices, music and subtitles, then records and downloads the video. Keep this tab open.</p>
+
+    <details>
+      <summary>More options</summary>
+      <div class="row">
+        <label>Pictures <select id="st_source">
+          <option value="3d" selected>Real-time 3D animated characters (works on any network)</option>
+          <option value="ai">AI pictures, still images (pollinations.ai)</option>
+          <option value="upload">I will upload my own pictures</option>
+        </select></label>
+        <label>Look seed <input id="st_seed" type="number" value="7" title="Same number = same look. Change for different pictures." /></label>
+      </div>
+      <div class="row">
+        <button type="button" id="st_example" class="secondary small">Use example story</button>
+        <button type="button" id="st_prepare" class="secondary small">Only create scenes (edit before recording)</button>
+      </div>
+    </details>
+
+    <div id="st_plan" class="hidden">
+      <div class="row">
+        <label>Title shown at the start <input id="st_title" /></label>
+        <label>Ending text <input id="st_end" /></label>
+      </div>
+      <fieldset>
+        <legend>Characters &amp; voices</legend>
+        <label>Narrator voice <select id="st_narrator"></select></label>
+        <div id="st_cast"></div>
+      </fieldset>
+      <fieldset>
+        <legend>Look &amp; sound</legend>
+        <div class="row">
+          <label>Music <select id="st_music">
+            <option value="auto">Auto (from each scene's Sound)</option>
+            <option value="magical">Magical</option><option value="happy">Happy</option>
+            <option value="calm">Calm</option><option value="epic">Epic</option><option value="none">None</option>
+          </select></label>
+          <label>Min. seconds per scene <input id="st_min" type="number" min="2" max="30" value="4" /></label>
+        </div>
+        <div class="row wrap">
+          <label class="check"><input id="st_cinematic" type="checkbox" checked /> Cinematic look (light, vignette, film grain)</label>
+          <label class="check"><input id="st_captions" type="checkbox" checked /> Subtitles</label>
+          <label class="check"><input id="st_sparkles" type="checkbox" checked /> Magic sparkles</label>
+          <label class="check"><input id="st_sfx" type="checkbox" checked /> Sparkle sounds</label>
+          <label class="check"><input id="st_use_timing" type="checkbox" checked /> Use scene times from script</label>
+        </div>
+      </fieldset>
+      <h2>Scenes</h2>
+      <div id="st_scenes"></div>
+    </div>
+    <p class="hint" id="st_ready"></p>
+    <div class="buttons">
+      <button type="button" id="st_preview" class="secondary" disabled>Preview</button>
+      <button type="button" id="st_record" class="secondary" disabled>Record again</button>
+      <button type="button" id="st_thumb" class="secondary" disabled>Download thumbnail</button>
+    </div>
+  </section>
+
+  <section class="card form hidden" id="single_section">
+    <label>Describe your video
+      <textarea id="prompt" rows="2" placeholder="e.g. a happy robot dancing in the city at night"></textarea>
+    </label>
+    <p class="hint" id="agent_info"></p>
+
+    <fieldset>
+      <legend>Character</legend>
+      <label class="upload">
+        <span class="upload-title">Upload your own character picture</span>
+        <span class="hint">A photo of you, a drawing, a cartoon, a toy or a pet. JPG or PNG (transparent PNG works best).</span>
+        <input id="photo" type="file" accept="image/*" />
+      </label>
+      <div id="photo_box" class="hidden">
+        <label>How to show your picture <select id="photo_style">
+          <option value="cutout">Character on a background (moves, dances, walks)</option>
+          <option value="full">Talking photo (fills the whole screen)</option>
+        </select></label>
+        <div id="cutout_opts" class="row">
+          <label class="check"><input id="remove_bg" type="checkbox" checked /> Remove plain background</label>
+          <label>Strength <input id="bg_tol" type="range" min="10" max="120" value="45" /></label>
+        </div>
+        <label class="check"><input id="mouth_on" type="checkbox" checked /> Move the mouth when talking</label>
+        <p class="hint" id="mouth_hint">Click on the <b>mouth</b> in your picture below, then adjust the mouth width.</p>
+        <canvas id="photo_setup"></canvas>
+        <label id="mouth_w_box">Mouth width <input id="mouth_w" type="range" min="0.04" max="0.4" step="0.005" value="0.16" /></label>
+        <button type="button" id="photo_clear" class="link">Remove my picture (use a cartoon character instead)</button>
+      </div>
+      <div id="cartoon_box">
+        <label>...or choose a cartoon character <select id="character"></select></label>
+        <div id="char_opts" class="row">
+          <label>Colour <input id="color" type="color" value="#4f8cff" /></label>
+          <label class="check"><input id="color_auto" type="checkbox" checked /> auto colour</label>
+        </div>
+      </div>
+      <label id="motion_box">Movement <select id="motion"></select></label>
+    </fieldset>
+
+    <fieldset id="scene_box">
+      <legend>Scene</legend>
+      <label>Background <select id="scene"></select></label>
+      <label id="bg_image_box" class="hidden">Background image <input id="bg_image" type="file" accept="image/*" /></label>
+      <label id="bg_color_box" class="hidden">Background colour <input id="bg_color" type="color" value="#20243a" /></label>
+      <div class="row">
+        <label>Camera <select id="camera"></select></label>
+        <label>Format <select id="format">
+          <option value="16:9">16:9 (YouTube)</option>
+          <option value="9:16">9:16 (Reels / Shorts)</option>
+          <option value="1:1">1:1 (Square)</option>
+        </select></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Voice &amp; sound</legend>
+      <label>What should the character say?
+        <textarea id="speech" rows="4" placeholder="Hello friends! Welcome to my channel. Today I will tell you a story..."></textarea>
+      </label>
+      <div class="row">
+        <label>Voice <select id="voice"></select></label>
+        <label>Speed <select id="speed">
+          <option value="0.85">Slow</option>
+          <option value="1" selected>Normal</option>
+          <option value="1.15">Fast</option>
+        </select></label>
+      </div>
+      <label>...or use your own recorded voice / audio file (optional)
+        <input id="audio_file" type="file" accept="audio/*" />
+      </label>
+      <div class="row">
+        <label>Background music <select id="music"></select></label>
+        <label class="check"><input id="subtitles" type="checkbox" checked /> Subtitles</label>
+      </div>
+      <p class="hint">The first voice takes a little longer: your browser downloads the free voice model once (~90 MB).</p>
+    </fieldset>
+
+    <label>Video length (it becomes longer automatically if the speech is longer)
+      <div class="row tight">
+        <input id="minutes" type="number" min="0" max="10" value="0" /><span class="unit">min</span>
+        <input id="seconds" type="number" min="0" max="59" value="10" /><span class="unit">sec</span>
+      </div>
+      <div class="chips" id="chips">
+        <button type="button" data-s="10">10s</button><button type="button" data-s="30">30s</button>
+        <button type="button" data-s="60">1 min</button><button type="button" data-s="120">2 min</button>
+        <button type="button" data-s="180">3 min</button>
+      </div>
+    </label>
+  </section>
+
+  <section class="card output">
+    <canvas id="stage" width="1280" height="720"></canvas>
+    <div class="bar"><div id="fill"></div></div>
+    <p id="status" class="hint">Press Preview to watch, or Make video to record it.</p>
+    <div class="buttons">
+      <button id="preview_btn" class="secondary">Preview</button>
+      <button id="record_btn">Make video</button>
+      <button id="stop_btn" class="secondary" disabled>Stop</button>
+    </div>
+    <p class="hint">Recording happens in real time (a 3-minute video takes 3 minutes). Keep this tab open and visible.</p>
+    <div id="result" class="hidden">
+      <h2>Your video</h2>
+      <video id="result_video" controls></video>
+      <a id="download" class="btn">Download video</a>
+    </div>
+  </section>
+</main>
+<footer>
+  Version 12. Everything runs on your own device. Nothing is uploaded. Voice: <a href="https://huggingface.co/hexgrad/Kokoro-82M" target="_blank" rel="noopener">Kokoro-82M</a> (Apache-2.0).
+</footer>
+<script type="module" src="js/app.js?v=12"></script>
+<script type="module">
+  import { initStory } from "./js/story.js?v=12";
+  initStory();
+  const tabs = { story: ["tab_story", "story_section"], single: ["tab_single", "single_section"] };
+  for (const [mode, [tab]] of Object.entries(tabs)) {
+    document.getElementById(tab).addEventListener("click", () => {
+      for (const [m, [t, sec]] of Object.entries(tabs)) {
+        document.getElementById(t).classList.toggle("active", m === mode);
+        document.getElementById(sec).classList.toggle("hidden", m !== mode);
+      }
+      document.body.classList.toggle("story-mode", mode === "story");
+      ["preview_btn", "record_btn"].forEach((id) => document.getElementById(id).classList.toggle("hidden", mode === "story"));
+    });
+  }
+  document.body.classList.add("story-mode");
+  ["preview_btn", "record_btn"].forEach((id) => document.getElementById(id).classList.add("hidden"));
+</script>
+</body>
+</html>
