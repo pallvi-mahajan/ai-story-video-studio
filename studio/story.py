@@ -139,7 +139,8 @@ def write_story(theme: str, n_scenes: int = 6, characters: dict | None = None) -
     lesson = next((l for l in LESSONS if re.search(l[0], low)), LESSONS[6])
     _, title, place, obj, problem, ask, refuse, feel, advice, fix, moral = lesson
     names = [w for w in re.findall(r"\b[A-Z][a-z]{2,}\b", theme) if w not in STOP]
-    boy = bool(re.search(r"\b(he|his|him|boy)\b", low)) and not re.search(r"\b(she|her|girl)\b", low)
+    boy_name = bool(names) and names[0].lower() in "arjun|aarav|kabir|rohan|ravi|rahul|vivaan|aditya|ali|omar|noah|liam|leo|max|sam|tom|ben|jack|ethan|lucas|oliver|james|jake|ryan|adam|dev|ishaan|krish|neil|sid|yash|zayn|daniel|david|mohan|raju".split("|")
+    boy = (bool(re.search(r"\b(he|his|him|boy)\b", low)) or boy_name) and not re.search(r"\b(she|her|girl)\b", low)
     chars = list((characters or {}).items())
     H, hlook = chars[0] if chars else (names[0] if names else ("Arjun" if boy else "Mia"), HERO["boy" if boy else "girl"])
     F, flook = chars[1] if len(chars) > 1 else FRIEND["boy" if boy else "girl"]
