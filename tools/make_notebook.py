@@ -13,7 +13,7 @@ Type a theme (e.g. *Mia learns how to share her toys*) or paste a full scene scr
 **AI 3D-animation-style pictures -> AI motion (LTX-Video) -> character voices -> subtitles -> MP4**.
 
 1. Menu **Runtime -> Change runtime type -> T4 GPU -> Save**.
-2. Run the cells from top to bottom (press ▶ on each).
+2. Run the cells from top to bottom (press ▶ on each). Type your own story in cell 2, then press ▶ on cell 2.
 3. First run: about 10 min of setup/downloads. A 6-scene video then takes roughly 15-30 min on the free GPU.
 
 Needs a normal internet connection (home Wi-Fi / mobile data). Office networks that block AI sites will not work.
@@ -27,8 +27,9 @@ Needs a normal internet connection (home Wi-Fi / mobile data). Office networks t
 print("Setup done")
 """),
     code('''
-#@title 2. Your story
-#@markdown Type a short theme, or paste a full script with "Scene 1", "Visual prompt:", "Narration:", "Dialogue:" lines.
+#@title 2. Your story -> make the video
+#@markdown Replace the example with your own theme (e.g. *Inayat learns how to make rice at the age of 9*), or paste a full script
+#@markdown with "Scene 1", "Visual prompt:", "Narration:", "Dialogue:" lines. Then press ▶ on this cell.
 STORY = """
 Mia learns how to share her toys
 """
@@ -40,18 +41,16 @@ FORMAT = "16:9"  #@param ["16:9", "9:16", "1:1"]
 ANIMATION = "ltx"  #@param ["ltx", "camera", "svd"]
 #@markdown **ltx** = real AI motion (slow, best). **camera** = cinematic camera moves only (fast). **svd** needs a Hugging Face token.
 SEED = 7  #@param {type:"integer"}
-'''),
-    code("""
-#@title 3. Make the video
+
 import os
 from IPython.display import Video, display
 from studio.run import make_video
 os.environ.setdefault("HF_HUB_ENABLE_HF_TRANSFER", "0")
 out = make_video(STORY, CHARACTERS, SCENES, FORMAT, ANIMATION, SEED, out_dir="/content/output")
 display(Video(out, embed=True, width=640))
-"""),
+'''),
     code("""
-#@title 4. Download the video and the scene pictures
+#@title 3. Download the video and the scene pictures
 from google.colab import files
 import glob
 files.download(out)
