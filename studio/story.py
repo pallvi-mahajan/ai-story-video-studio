@@ -144,7 +144,30 @@ HELPERS = [
     (r"grandpa|grandfather|nana|dada", ("Grandpa", "a kind grandfather with white hair, round glasses and a brown sweater")),
     (r"teacher|coach|aunt|aunty|auntie|uncle", ("Teacher", "a friendly teacher with glasses, a warm smile and a yellow cardigan")),
 ]
-HANDS_ON = re.compile(r"^(make|cook|bake|prepare|ride|swim|play|draw|paint|read|write|sing|dance|tie|grow|plant|build)\b")
+HANDS_ON = re.compile(r"^(make|cook|bake|prepare|ride|swim|play|draw|paint|read|write|sing|dance|tie|grow|plant|build|wash|clean|fly|climb)\b")
+E_VERBS = set("make bake ride dance write drive take share smile wave save use hide skate prepare serve give live move slice".split())
+STOP_AT = r"\s*(?:$|[.!?,]|\b(?:at|when|with|from|in|on|because|after|before|by|for)\b)"
+
+
+def _base_verb(w):
+    """"making" / "makes" -> "make", "swimming" -> "swim", "washes" -> "wash"."""
+    if w.endswith("ing") and len(w) > 5:
+        s = re.sub(r"([bdgkmnprt])\1$", r"\1", w[:-3])
+        return s + "e" if s + "e" in E_VERBS else s
+    if re.search(r"(sh|ch|ss|x)es$", w):
+        return w[:-2]
+    if w.endswith("ies"):
+        return w[:-3] + "y"
+    return w[:-1] if re.search(r"[^s]s$", w) else w
+
+
+def _action_of(low, name):
+    """"inayat is making rice with her mother" -> "make rice" (the action of a plain sentence theme)."""
+    rest = re.sub(rf"^.*?\b{re.escape(name.lower())}\b\s*", "", low) if name else low
+    m = re.match(r"^(?:(?:is|was|will|goes to|went to)\s+)?([a-z]+)(?:\s+(?!(?:at|when|with|from|in|on|by|for)\b)([a-z][a-z' ]*?))?" + STOP_AT, rest)
+    if not m or not (re.search(r"(ing|s)$", m.group(1)) or HANDS_ON.match(m.group(1))):
+        return ""
+    return " ".join(x for x in (_base_verb(m.group(1)), (m.group(2) or "").strip()) if x)
 SKILL_PLACES = [
     (r"cook|rice|bak|cake|roti|bread|tea\b|soup|food|pancake|cookie|dal|curry|noodle|egg|sandwich|breakfast|lunch|dinner",
      "bright cozy kitchen with pots, pans and colourful spices"),
@@ -168,16 +191,18 @@ def write_story(theme: str, n_scenes: int = 6, characters: dict | None = None) -
     am = AGE_RE.search(text)
     age = int(am.group(1) or am.group(2)) if am else 0
     low = re.sub(r"\s+", " ", AGE_RE.sub(" ", text.lower())).strip()
-    sm = SKILL_RE.search(low)
-    skill = sm.group(1).strip() if sm else ""
-    lesson = None if skill and HANDS_ON.match(skill) else next(
-        (l for l in LESSONS if re.search(r"\b(?:%s)" % l[0], skill or low)), None if skill else LESSONS[6])
     names = [w for w in re.findall(r"\b[A-Z][a-z]{2,}\b", text) if w not in STOP]
-    lm = re.match(r"^([a-z]{3,})\s+(?:lea?rn?\w*|lern\w*|wants|tries|is|goes|loves|finds|makes|gets|and)\b", text, re.I)
-    hw = re.search(r"\bwith\s+(?:her|his|my|their|the)\s+([a-z]+)", low)
-    helper = next((h for r, h in HELPERS if hw and re.search(r, hw.group(1))), None)
+    lm = re.match(r"^([a-z]{3,})\s+(?:lea?rn?\w*|lern\w*|wants|tries|is|was|goes|loves|finds|\w+s|\w+ing|and)\b", text, re.I)
     if not names and lm and lm.group(1).capitalize() not in STOP:
         names = [lm.group(1).capitalize()]
+    sm = SKILL_RE.search(low)
+    learnt = sm.group(1).strip() if sm else ""
+    lesson = None if learnt and HANDS_ON.match(learnt) else next(
+        (l for l in LESSONS if re.search(r"\b(?:%s)" % l[0], learnt or low)), None)
+    skill = learnt or ("" if lesson else _action_of(low, names[0] if names else ""))
+    lesson = lesson or (None if skill else LESSONS[6])
+    hw = re.search(r"\b(?:with|for|and)\s+(?:her|his|my|their|the)\s+([a-z]+)", low)
+    helper = next((h for r, h in HELPERS if hw and re.search(r, hw.group(1))), None)
     boy_name = bool(names) and names[0].lower() in BOY_NAMES
     boy = (bool(re.search(r"\b(he|his|him|boy)\b", low)) or boy_name) and not re.search(r"\b(she|her|girl)\b", low)
     aged = lambda look: re.sub(r"\b\d+-year-old\b", f"{age}-year-old", look, count=1) if age else look
